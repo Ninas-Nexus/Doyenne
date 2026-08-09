@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doyenne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --page:#241C29;--card:#2F2637;--inset:#372C40;--line:#463A50;
+    --text:#F3E9EE;--sub:#C3AFC6;--faint:#8F7E94;
+    --lav:#C9B6F5;--pink:#F5B8D0;--mint:#A7E8C6;--peach:#F7C89B;--coral:#F2A6A0;--rose:#EF8FA6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);
+    font-family:'Nunito',ui-rounded,system-ui,sans-serif;padding:28px 20px 56px}
+  .wrap{max-width:780px;margin:0 auto}
+  h1{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:32px;letter-spacing:.3px}
+  h2{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:19px;color:var(--text)}
+  .sub{margin:6px 0 0 40px;color:var(--sub);font-size:15px}
+  .faint{color:var(--faint)}.small{font-size:12px;line-height:1.6}
+  .titlerow{display:flex;align-items:center;gap:11px}
+  .nav{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 26px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px 20px}
+  .hidden{display:none}
+  .secthead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .secttitle{display:flex;align-items:baseline;gap:8px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:26px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+  .stat .lbl{display:flex;align-items:center;gap:7px;color:var(--sub);font-size:12.5px;font-weight:600}
+  .stat .dot{width:9px;height:9px;border-radius:50%}
+  .stat .val{font-size:26px;font-weight:700;margin-top:6px;letter-spacing:.2px}
+  .stat .hint{color:var(--faint);font-size:12px;margin-top:2px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:5px;color:var(--sub);font-size:12px}
+  .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .btn{cursor:pointer;font-family:inherit;font-weight:700;border:none;border-radius:12px;
+    padding:9px 16px;font-size:13.5px;text-decoration:none;display:inline-block}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--sub)}
+  .btn.pink{background:var(--pink);color:var(--page)}
+  .btn.lav{background:var(--lav);color:var(--page)}
+  .in{background:var(--inset);color:var(--text);border:1px solid var(--line);border-radius:12px;
+    padding:9px 12px;font-family:inherit;font-size:13.5px}
+  .in:focus{outline:none;border-color:var(--lav)}
+  details summary{cursor:pointer;color:var(--sub);font-size:13px;margin-top:10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fall{0%{transform:translateY(-14vh)}100%{transform:translateY(116vh);opacity:.1}}
+  @keyframes drift{0%{transform:translateX(-10px)}100%{transform:translateX(10px)}}
+  @keyframes tumble{to{transform:rotate(360deg)}}
+  @keyframes pop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+  @keyframes floatup{0%{transform:translate(0,0) scale(.6);opacity:0}30%{opacity:1}100%{transform:translate(16px,-30px) scale(1.1);opacity:0}}
+  .spin{display:inline-flex;animation:spin 9s linear infinite}
+  #fx{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:300}
+  .modal{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;
+    background:rgba(20,14,24,.55);padding:16px;pointer-events:auto}
+  .dialog{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:28px 32px;
+    text-align:center;max-width:340px;box-shadow:0 24px 60px rgba(0,0,0,.4);animation:pop .55s cubic-bezier(.2,1.1,.4,1)}
+  .bubble{position:relative;background:var(--inset);border:1px solid var(--line);border-radius:16px;
+    padding:12px 16px;max-width:150px;text-align:left}
+  .bubble .tail{position:absolute;left:-8px;top:26px;width:0;height:0;
+    border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:8px solid var(--line)}
+  .bubble .tail2{position:absolute;left:-6.5px;top:26px;width:0;height:0;
+    border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:8px solid var(--inset)}
+  @media (prefers-reduced-motion: reduce){.spin,#fx,.heart{animation:none!important}}
+
+  body.locked{overflow:hidden;height:100vh}
+  body.locked .wrap{filter:blur(18px);pointer-events:none;opacity:.18;transform:scale(1.02)}
+  .lock{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--page);padding:20px}
+  .lock.hide{opacity:0;pointer-events:none;transition:opacity .5s ease}
+  .lock-inner{text-align:center;max-width:320px;width:100%}
+  .lock h1{font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:34px;margin:14px 0 4px}
+  .lock .status{color:var(--sub);font-size:14px;margin-bottom:22px}
+  .lock-row{display:flex;gap:8px}
+  .lock input{flex:1;min-width:0;background:var(--inset);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-family:inherit;font-size:15px;letter-spacing:.08em}
+  .lock input:focus{outline:none;border-color:var(--lav)}
+  .lock .err{color:var(--rose);font-size:12.5px;margin-top:10px;min-height:16px;opacity:0;transition:opacity .2s}
+  .lock .err.show{opacity:1}
+  .lock.shake .lock-inner{animation:shake .4s ease-in-out}
+  .lock.shake input{border-color:var(--rose)}
+  .relock{position:fixed;top:14px;right:16px;z-index:50;cursor:pointer;font-size:11.5px;color:var(--faint);border:1px solid var(--line);border-radius:20px;padding:4px 11px;background:var(--card)}
+  .relock:hover{color:var(--rose);border-color:var(--rose)}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+  /* bigger buttons + neon accents */
+  .btn.big{padding:17px 28px;font-size:16.5px;border-radius:16px;letter-spacing:.2px;
+    background:linear-gradient(160deg,#3B2F46,#332843);border:1px solid rgba(201,182,245,.28);
+    color:var(--text);box-shadow:0 0 0 1px rgba(201,182,245,.06),0 6px 20px rgba(0,0,0,.32)}
+  .btn.big:hover{background:linear-gradient(160deg,#463857,#3B2E4F);border-color:rgba(201,182,245,.6);
+    color:#fff;box-shadow:0 0 0 1px rgba(201,182,245,.35),0 0 20px rgba(201,182,245,.3),0 8px 26px rgba(0,0,0,.34)}
+  /* one pastel accent bar per button, cycled so the row reads as a set */
+  .nav .btn.big{border-top:2px solid var(--lav)}
+  .nav .btn.big:nth-child(2){border-top-color:var(--peach)}
+  .nav .btn.big:nth-child(3){border-top-color:var(--pink)}
+  .nav{gap:12px}
+  .btn{transition:box-shadow .2s,border-color .2s,color .2s,transform .12s}
+  .btn:hover{transform:translateY(-1px);border-color:var(--lav);color:var(--text);
+    box-shadow:0 0 0 1px var(--lav),0 0 14px rgba(201,182,245,.45),0 0 30px rgba(201,182,245,.18)}
+  .btn.pink:hover{box-shadow:0 0 14px rgba(245,184,208,.6),0 0 34px rgba(245,184,208,.25)}
+  h1{text-shadow:0 0 18px rgba(245,184,208,.35),0 0 42px rgba(201,182,245,.18)}
+  h2{text-shadow:0 0 14px rgba(201,182,245,.22)}
+  .card{box-shadow:0 0 0 1px rgba(201,182,245,.05),0 6px 26px rgba(0,0,0,.28)}
+  .card:hover{border-color:rgba(201,182,245,.35);box-shadow:0 0 0 1px rgba(201,182,245,.16),0 0 24px rgba(201,182,245,.08),0 6px 26px rgba(0,0,0,.3)}
+  /* neon detail lines on h2 hover */
+  h2{position:relative}
+  h2::before{content:'';position:absolute;left:-8px;top:50%;width:3px;height:60%;background:linear-gradient(180deg,var(--mint),var(--lav),var(--pink));border-radius:2px;opacity:0;transition:opacity .3s}
+  .card:hover h2::before{opacity:.9}
+  /* stat dot glow on hover */
+  .stat .dot{box-shadow:0 0 0 3px var(--page),0 0 0 4px currentColor,0 0 14px rgba(255,255,255,.18)}
+  .stat:hover .dot{box-shadow:0 0 0 3px var(--page),0 0 0 4px currentColor,0 0 24px rgba(255,255,255,.32)}
+  .stat:hover .val{text-shadow:0 0 18px rgba(245,184,208,.4),0 0 34px rgba(201,182,245,.25)}
+  /* water fill enhanced glow */
+  .wfill{box-shadow:0 0 18px rgba(167,232,198,.68),0 0 38px rgba(167,232,198,.32),0 0 56px rgba(201,182,245,.22)}
+  .glass.on{filter:drop-shadow(0 0 8px rgba(167,232,198,.95)) drop-shadow(0 0 16px rgba(201,182,245,.5))}
+  /* nav button glow on hover */
+  .btn.big:hover{box-shadow:0 0 0 1px rgba(201,182,245,.35),0 0 18px rgba(201,182,245,.35),0 0 40px rgba(201,182,245,.2),0 8px 26px rgba(0,0,0,.34)}
+  .stat{transition:box-shadow .2s,border-color .2s}
+  .stat:hover{border-color:rgba(167,232,198,.35);box-shadow:0 0 20px rgba(167,232,198,.1)}
+  .stat .val{text-shadow:0 0 16px rgba(255,255,255,.16)}
+  /* side-by-side trends */
+  .twoup{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:640px){.twoup{grid-template-columns:1fr}}
+  /* water meter */
+  .wbar{height:12px;border-radius:20px;background:var(--inset);border:1px solid var(--line);overflow:hidden}
+  .wfill{height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,var(--mint),var(--lav));
+    box-shadow:0 0 16px rgba(167,232,198,.55),0 0 34px rgba(201,182,245,.3);transition:width .45s cubic-bezier(.3,1,.4,1)}
+  .glasses{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+  .glass{cursor:pointer;background:none;border:none;padding:0;line-height:0;opacity:.32;
+    transition:opacity .2s,transform .15s,filter .2s}
+  .glass:hover{transform:translateY(-2px)}
+  .glass.on{opacity:1;filter:drop-shadow(0 0 7px rgba(167,232,198,.85))}
+</style>
+</head>
+<body class="locked">
+<div class="lock" id="lock">
+  <div class="lock-inner">
+    <span id="lockLogo" class="spin" style="display:inline-flex"></span>
+    <h1>Doyenne</h1>
+    <div class="status">Enter password to continue</div>
+    <div class="lock-row">
+      <input type="password" id="lockInput" placeholder="password" autocomplete="off" autofocus>
+      <button class="btn pink" id="lockBtn">Enter</button>
+    </div>
+    <div class="err" id="lockErr">Wrong password, try again</div>
+  </div>
+</div>
+<div class="relock" id="relock" style="display:none">&#128274; lock</div>
+
+
+<header class="wrap">
+  <div class="titlerow"><span id="logo" class="spin"></span><h1>Doyenne</h1></div>
+  <p class="sub">Trust the process. Trust yourself</p>
+  <div class="nav">
+    <a class="btn big" href="https://chatgpt.com/g/g-p-6a1e6136e5448191a52c020233ad8049-healthapp/project" target="_blank" rel="noopener">Nutrition logger &#8599;</a>
+    <a class="btn big" href="https://chatgpt.com/g/g-p-6a757e9b63d88191899533ed638a33ce-morning-reflection/project" target="_blank" rel="noopener">Morning reflection &#8599;</a>
+    <a class="btn big" id="eveningBtn" href="https://chatgpt.com/g/g-p-6a756ef69ec48191ac863c1161fdbdc9-evening-reflection/project" target="_blank" rel="noopener">Evening reflection &#8599;</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="secthead">
+    <div class="secttitle"><h2>Today's nutrition</h2><span id="nutriDate" class="faint" style="font-size:13px"></span></div>
+    <button id="refreshBtn" class="btn ghost">&#8635; Refresh</button>
+  </div>
+
+  <div class="small" style="margin:-4px 0 16px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <span id="status" class="faint"></span>
+    <a class="faint" style="text-decoration:underline" href="https://docs.google.com/spreadsheets/d/14cZc2RvBIsiLHAhx--fDs7pMOmv5lufNCa7U1SPJzhg/edit" target="_blank" rel="noopener">Open food_log &#8599;</a>
+    <a href="#" id="pasteToggle" class="faint" style="text-decoration:underline">paste rows instead</a>
+  </div>
+  <div id="panel" class="card hidden" style="margin-bottom:14px;padding:16px 18px">
+    <div class="small" style="color:var(--sub);margin-bottom:8px">Paste daily_summary rows (any CSV with date, calories, fat, protein columns).</div>
+    <textarea id="paste" class="in" style="width:100%;min-height:88px;resize:vertical"
+      placeholder="date,total_calories,total_fat_g,total_protein_g,items&#10;2026-08-06,328,6.5,41,3"></textarea>
+    <button id="pasteBtn" class="btn lav" style="margin-top:8px">Update from paste</button>
+  </div>
+
+  <div id="stats" class="grid"></div>
+
+  <div class="secthead" style="margin-top:26px">
+    <div class="secttitle"><h2>Water today</h2><span id="waterCount" class="faint" style="font-size:13px"></span></div>
+    <div><button id="waterMinus" class="btn">&minus;</button> <button id="waterPlus" class="btn">+</button></div>
+  </div>
+  <section class="card" style="margin-bottom:16px">
+    <div class="wbar"><div id="waterFill" class="wfill"></div></div>
+    <div id="glasses" class="glasses"></div>
+  </section>
+
+  <div class="twoup">
+    <section class="card">
+      <div class="secthead">
+        <h2>Calories</h2>
+        <div class="legend"><span><i style="background:var(--peach)"></i>kcal</span></div>
+      </div>
+      <div style="height:160px;margin-top:8px"><canvas id="calChart"></canvas></div>
+    </section>
+    <section class="card">
+      <div class="secthead">
+        <h2>Fat &amp; protein</h2>
+        <div class="legend">
+          <span><i style="background:var(--lav)"></i>Fat g</span>
+          <span><i style="background:var(--mint)"></i>Protein g</span>
+        </div>
+      </div>
+      <div style="height:160px;margin-top:8px"><canvas id="macroChart"></canvas></div>
+    </section>
+  </div>
+  <p id="nutriNote" class="faint small" style="margin:10px 2px 0"></p>
+
+  <p class="faint small" style="margin-top:22px">
+    Nutrition comes from the food_log snapshot or a Refresh pull. Notes save to this browser.
+    Blood pressure lives on its own page. Personal log, not medical advice.
+  </p>
+</main>
+
+<div id="fx"></div>
+
+<script>
+const C={page:'#241C29',card:'#2F2637',inset:'#372C40',line:'#463A50',text:'#F3E9EE',sub:'#C3AFC6',
+  faint:'#8F7E94',lav:'#C9B6F5',pink:'#F5B8D0',mint:'#A7E8C6',peach:'#F7C89B',coral:'#F2A6A0',rose:'#EF8FA6',skin:'#EBC49A',hair:'#3A2E30'};
+const REDUCE = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const prettyDate=k=>{const[y,m,d]=k.split('-').map(Number);return MONTHS[m-1]+' '+d;};
+
+// storage: window.storage (Claude artifact) -> localStorage (downloaded) -> memory
+const store=(()=>{const mem={};
+  async function get(k){try{if(window.storage&&window.storage.get){const r=await window.storage.get(k);return r&&r.value?JSON.parse(r.value):null;}}catch(e){}
+    try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){}return (k in mem)?mem[k]:null;}
+  async function set(k,v){try{if(window.storage&&window.storage.set){await window.storage.set(k,JSON.stringify(v));return;}}catch(e){}
+    try{localStorage.setItem(k,JSON.stringify(v));return;}catch(e){}mem[k]=v;}
+  return {get,set};})();
+const K_NUTRI='health-journal:nutrition-v1';
+// same mechanism as the bragsheet: pull CSV straight from the gviz endpoint by sheet name.
+// works whenever the food_log is shared "Anyone with the link · Viewer" (no publish-to-web needed).
+const SPREADSHEET_ID='14cZc2RvBIsiLHAhx--fDs7pMOmv5lufNCa7U1SPJzhg';
+const CSV_URL='https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/gviz/tq?tqx=out:csv&gid=40030945';
+
+let NUTRITION=[
+  {date:'2026-08-07',calories:1254,fat:11.2,protein:96.6,items:12},
+  {date:'2026-08-08',calories:988,fat:9.3,protein:77.8,items:6},
+];
+
+function bloom(size){const p=[C.pink,C.lav,C.mint,C.peach,C.coral];let e='';
+  [0,72,144,216,288].forEach((a,i)=>{e+='<ellipse cx="13" cy="7" rx="4.2" ry="6.2" fill="'+p[i]+'" opacity="0.9" transform="rotate('+a+' 13 13)"/>';});
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 26 26" aria-hidden="true">'+e+'<circle cx="13" cy="13" r="3.1" fill="'+C.page+'"/><circle cx="13" cy="13" r="1.6" fill="'+C.peach+'"/></svg>';}
+
+document.getElementById('logo').innerHTML=bloom(28);
+if(REDUCE) document.getElementById('logo').classList.remove('spin');
+
+function parseNutrition(text){
+  const parsed=Papa.parse(String(text).trim(),{skipEmptyLines:true});
+  const rows=parsed.data; if(!rows||!rows.length) return [];
+  const first=rows[0].map(c=>String(c).toLowerCase());
+  const hasHeader=first.some(c=>c.includes('date')||c.includes('calor'));
+  let idx={date:-1,cal:-1,fat:-1,protein:-1,items:-1},start=0;
+  if(hasHeader){
+    // Two passes so daily-total columns win over helper columns like
+    // calories_today / fat_today / protein_today that sit further right.
+    const claim=(k,i)=>{ if(idx[k]<0) idx[k]=i; };
+    const scan=pred=>first.forEach((c,i)=>{
+      if(!pred(c)) return;
+      if(c.includes('date')) claim('date',i);
+      else if(c.includes('calor')) claim('cal',i);
+      else if(c.includes('protein')) claim('protein',i);
+      else if(c.includes('fat')) claim('fat',i);
+      else if(c.includes('item')) claim('items',i);
+    });
+    scan(c=>c.startsWith('date')||c.startsWith('total_'));  // preferred names first
+    scan(()=>true);                                          // then anything left over
+    start=1;
+  }
+  if(idx.date<0) idx.date=0;
+  if(idx.cal<0) idx.cal=1;
+  if(idx.fat<0) idx.fat=2;
+  const pad=x=>String(x).padStart(2,'0');
+  const toISO=s=>{s=String(s||'').trim();
+    let m=s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]);
+    m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m) return m[3]+'-'+pad(+m[1])+'-'+pad(+m[2]);
+    const d=new Date(s); return isNaN(d)?null:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+  const out=[];
+  for(let i=start;i<rows.length;i++){const r=rows[i]; if(!r)continue;
+    const date=toISO(r[idx.date]); if(!date)continue;
+    const num=j=>(j>=0&&r[j]!=null&&r[j]!=='')?Number(r[j]):null;
+    out.push({date,calories:num(idx.cal)??0,fat:num(idx.fat)??0,
+      protein:idx.protein>=0?num(idx.protein):null,items:idx.items>=0?(num(idx.items)??0):0});}
+  out.sort((a,b)=>a.date<b.date?-1:1); return out;
+}
+
+let calChart,macroChart;
+function render(){
+  const hasP=NUTRITION.some(n=>n.protein!=null);
+  const latest=[...NUTRITION].reverse().find(n=>n.items>0)||NUTRITION[NUTRITION.length-1]||{date:'',calories:0,fat:0,protein:null,items:0};
+  document.getElementById('nutriDate').textContent=(latest.date?prettyDate(latest.date):'—')+' \u00B7 daily_summary';
+  const stat=(lbl,val,hint,dot,muted)=>'<div class="stat"><div class="lbl"><span class="dot" style="background:'+dot+';box-shadow:0 0 0 4px '+dot+'22"></span>'+lbl+'</div><div class="val" style="color:'+(muted?C.faint:C.text)+'">'+val+'</div><div class="hint">'+hint+'</div></div>';
+  document.getElementById('stats').innerHTML=
+    stat('Calories',latest.calories,'kcal logged',C.peach,false)+
+    stat('Fat',latest.fat+' g','total fat',C.lav,false)+
+    stat('Protein',(hasP&&latest.protein!=null)?(latest.protein+' g'):'\u2014',hasP?'total protein':'grams logged',hasP?C.mint:C.faint,!hasP)+
+    stat('Items',latest.items,'foods logged',C.mint,false);
+  document.getElementById('nutriNote').innerHTML='Calories on the left axis, grams on the right.'+(hasP?'':' Protein appears once a total_protein_g column exists in daily_summary.');
+
+  const labels=NUTRITION.map(n=>prettyDate(n.date));
+  const base={responsive:true,maintainAspectRatio:false,interaction:{intersect:false,mode:'index'},
+    plugins:{legend:{display:false},tooltip:{backgroundColor:C.inset,borderColor:C.line,borderWidth:1,titleColor:C.sub,bodyColor:C.text}},
+    scales:{x:{grid:{color:C.line},ticks:{color:C.faint,maxTicksLimit:6}},
+      y:{beginAtZero:true,grid:{color:C.line},ticks:{color:C.faint}}}};
+
+  const calData=[{label:'Calories',data:NUTRITION.map(n=>n.calories),borderColor:C.peach,
+    backgroundColor:'rgba(247,200,155,.13)',fill:true,tension:.35,pointRadius:3,
+    pointBackgroundColor:C.peach,borderWidth:2.5}];
+  const macroData=[
+    {label:'Fat',data:NUTRITION.map(n=>n.fat),borderColor:C.lav,backgroundColor:C.lav,tension:.35,pointRadius:3,pointBackgroundColor:C.lav,borderWidth:2.5},
+    {label:'Protein',data:NUTRITION.map(n=>n.protein),borderColor:C.mint,backgroundColor:C.mint,borderDash:[4,4],tension:.35,pointRadius:3,pointBackgroundColor:C.mint,borderWidth:2,spanGaps:false},
+  ];
+
+  if(calChart){calChart.data.labels=labels;calChart.data.datasets[0].data=calData[0].data;calChart.update();}
+  else calChart=new Chart(document.getElementById('calChart'),{type:'line',data:{labels,datasets:calData},options:base});
+
+  if(macroChart){macroChart.data.labels=labels;macroData.forEach((d,i)=>macroChart.data.datasets[i].data=d.data);macroChart.update();}
+  else macroChart=new Chart(document.getElementById('macroChart'),{type:'line',data:{labels,datasets:macroData},options:base});
+}
+
+
+// ===== water meter =====
+const K_WATER='doyenne:water-v1';
+const WATER_CSV_URL='https://docs.google.com/spreadsheets/d/'+SPREADSHEET_ID+'/gviz/tq?tqx=out:csv&gid=312405968';
+let WATER_GOAL=2000, WATER_UNIT='mL', ML_PER_GLASS=250, water=0, waterFromSheet=false;
+let waterDate=localDay();
+// Local calendar date, not UTC. toISOString() rolls over at 5/4 PM Pacific,
+// which made today's water rows stop matching every evening.
+function localDay(d){d=d||new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function glassSVG(){return '<svg width="26" height="32" viewBox="0 0 26 32"><path d="M4 3 h18 l-2.4 26 a2 2 0 0 1 -2 2 h-9.2 a2 2 0 0 1 -2 -2 Z" fill="none" stroke="'+C.mint+'" stroke-width="2"/><path d="M6.2 15 h13.6 l-1.5 14 a1.6 1.6 0 0 1 -1.6 1.4 h-7.4 a1.6 1.6 0 0 1 -1.6 -1.4 Z" fill="'+C.mint+'" opacity=".85"/></svg>';}
+
+function renderWater(){
+  document.getElementById('waterFill').style.width=Math.min(100,(water/WATER_GOAL)*100)+'%';
+  const ml=Math.round(water);
+  document.getElementById('waterCount').textContent=
+    ml+' of '+WATER_GOAL+' mL'+(water>=WATER_GOAL?'  \u2713':'')+(waterFromSheet?'  \u00B7 from food_log':'');
+  // each glass icon = 250 mL
+  const n=Math.round(WATER_GOAL/ML_PER_GLASS), filled=Math.floor(water/ML_PER_GLASS);
+  let h='';for(let i=0;i<n;i++)h+='<button class="glass'+(i<filled?' on':'')+'" data-i="'+(i+1)+'" title="'+((i+1)*ML_PER_GLASS)+' mL"></button>';
+  const g=document.getElementById('glasses'); g.innerHTML=h;
+  g.querySelectorAll('.glass').forEach(b=>{b.innerHTML=glassSVG();
+    b.onclick=()=>{const k=+b.getAttribute('data-i')*ML_PER_GLASS;
+      water=(water===k)?k-ML_PER_GLASS:k; waterFromSheet=false; saveWater(); renderWater();};});
+}
+function saveWater(){store.set(K_WATER,{date:waterDate,count:water,fromSheet:waterFromSheet});}
+
+// Water lives in the food_log "log" tab as ordinary rows:
+// food contains "water", portion_amount holds the mL, portion_unit is mL.
+// Sums every water row timestamped today.
+function parseWater(text){
+  const rows=Papa.parse(String(text).trim(),{skipEmptyLines:true}).data;
+  if(!rows||rows.length<2) return null;
+  const head=rows[0].map(c=>String(c).toLowerCase().trim());
+  const find=(...keys)=>head.findIndex(c=>keys.some(k=>c.includes(k)));
+  const ti=find('timestamp','date','time');
+  const fi=find('food','item','name');
+  const ai=find('portion_amount','amount','portion','quantity','qty');
+  const ui=find('portion_unit','unit');
+  if(ti<0||fi<0||ai<0) return null;
+  const pad=x=>String(x).padStart(2,'0');
+  const toISO=v=>{v=String(v||'').trim();
+    let m=v.match(/(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]);
+    m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return m[3]+'-'+pad(+m[1])+'-'+pad(+m[2]);
+    const d=new Date(v); return isNaN(d)?null:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+  let total=0;
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]; if(!r) continue;
+    if(!/water/i.test(String(r[fi]||''))) continue;
+    if(toISO(r[ti])!==waterDate) continue;
+    let n=Number(String(r[ai]).replace(/[^0-9.\-]/g,'')); if(isNaN(n)) continue;
+    const unit=ui>=0?String(r[ui]||'').toLowerCase():'ml';
+    if(unit.includes('l')&&!unit.includes('ml')) n*=1000;      // litres
+    else if(unit.includes('oz')) n*=29.5735;                    // fluid ounces
+    else if(unit.includes('cup')) n*=236.588;
+    total+=n;
+  }
+  return {total};
+}
+
+async function pullWater(){
+  try{
+    waterDate=localDay();
+    const resp=await fetch(WATER_CSV_URL+'&_='+Date.now());
+    if(!resp.ok) throw 0;
+    const text=await resp.text();
+    if(text.trim().startsWith('<')) throw 0;
+    const res=parseWater(text);
+    if(!res) return false;
+    water=res.total; waterFromSheet=true; saveWater(); renderWater(); return true;
+  }catch(e){ return false; }
+}
+
+async function bootWater(){
+  const w=await store.get(K_WATER);
+  if(w&&w.date===waterDate){ water=w.count||0; waterFromSheet=!!w.fromSheet; }
+  else { water=0; waterFromSheet=false; saveWater(); }
+  renderWater();
+  pullWater();
+}
+document.getElementById('waterPlus').onclick=()=>{water=Math.min(WATER_GOAL,water+ML_PER_GLASS);waterFromSheet=false;saveWater();renderWater();};
+document.getElementById('waterMinus').onclick=()=>{water=Math.max(0,water-ML_PER_GLASS);waterFromSheet=false;saveWater();renderWater();};
+
+// ===== evening reflection (URL not provided yet) =====
+
+function setStatus(msg,color){const s=document.getElementById('status');s.textContent=msg;s.style.color=color||C.faint;}
+
+function apply(rows,src){
+  if(!rows.length){setStatus('No valid rows found in that data.',C.coral);return false;}
+  NUTRITION=rows; store.set(K_NUTRI,rows); render();
+  setStatus('\u2713 Updated from '+(src||'sheet')+' \u00B7 '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}),C.mint);
+  return true;
+}
+
+// gviz pull, same as the bragsheet (cache-busted each time)
+async function pullLive(){
+  setStatus('Pulling live from daily_summary\u2026',C.sub);
+  try{
+    const resp=await fetch(CSV_URL+'&_='+Date.now());
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const text=await resp.text();
+    if(text.trim().startsWith('<')) throw new Error('Google returned a login page. Share food_log as Anyone with the link \u00B7 Viewer.');
+    const rows=parseNutrition(text.trim());
+    if(!rows.length) throw new Error('No rows parsed from the sheet.');
+    apply(rows,'daily_summary');
+  }catch(e){
+    setStatus('Live pull failed: '+e.message+' Showing the last saved snapshot.',C.coral);
+  }
+}
+
+async function boot(){
+  const n=await store.get(K_NUTRI); if(Array.isArray(n)&&n.length) NUTRITION=n;
+  render();
+  pullLive();   // auto-refresh on open; falls back to the snapshot above if it can't reach the sheet
+}
+
+document.getElementById('refreshBtn').onclick=()=>{pullLive();pullWater();};
+document.getElementById('pasteToggle').onclick=e=>{e.preventDefault();document.getElementById('panel').classList.toggle('hidden');};
+document.getElementById('pasteBtn').onclick=()=>apply(parseNutrition(document.getElementById('paste').value),'paste');
+
+// intro: dense flower confetti + two popups
+function glitter(count){const fx=document.getElementById('fx');
+  for(let i=0;i<count;i++){const left=Math.random()*100,size=8+Math.random()*18,
+    delay=Math.random()*1.6,dur=2.8+Math.random()*2.4,dr=1.6+Math.random()*1.8,tu=0.8+Math.random()*1.3;
+    const outer=document.createElement('div');
+    outer.style.cssText='position:absolute;left:'+left+'%;top:0;animation:fall '+dur+'s cubic-bezier(.35,0,.7,1) '+delay+'s forwards';
+    outer.innerHTML='<div style="animation:drift '+dr+'s ease-in-out '+delay+'s infinite alternate"><div style="animation:tumble '+tu+'s linear '+delay+'s infinite">'+bloom(size)+'</div></div>';
+    fx.appendChild(outer);}
+  setTimeout(()=>{fx.innerHTML='';},6200);}
+
+function kissMan(size){return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 130 140" aria-hidden="true">'+
+  '<path d="M22 140 C22 116 44 106 65 106 C86 106 108 116 108 140 Z" fill="'+C.lav+'"/>'+
+  '<rect x="57" y="92" width="16" height="18" rx="7" fill="'+C.skin+'"/>'+
+  '<circle cx="65" cy="58" r="34" fill="'+C.skin+'"/>'+
+  '<circle cx="32" cy="60" r="6" fill="'+C.skin+'"/><circle cx="98" cy="60" r="6" fill="'+C.skin+'"/>'+
+  '<path d="M31 52 C31 26 99 26 99 52 C99 44 92 30 65 30 C40 30 31 42 31 52 Z" fill="'+C.hair+'"/>'+
+  '<path d="M44 50 q7 -5 14 -1" stroke="'+C.hair+'" stroke-width="2.4" fill="none" stroke-linecap="round"/>'+
+  '<path d="M74 49 q7 -4 13 1" stroke="'+C.hair+'" stroke-width="2.4" fill="none" stroke-linecap="round"/>'+
+  '<circle cx="80" cy="60" r="3.4" fill="'+C.hair+'"/>'+
+  '<path d="M46 61 q6 5 12 0" stroke="'+C.hair+'" stroke-width="2.6" fill="none" stroke-linecap="round"/>'+
+  '<ellipse cx="49" cy="72" rx="6" ry="4" fill="'+C.pink+'" opacity="0.55"/>'+
+  '<ellipse cx="86" cy="72" rx="6" ry="4" fill="'+C.pink+'" opacity="0.55"/>'+
+  '<circle cx="63" cy="80" r="5" fill="'+C.coral+'"/><circle cx="63" cy="80" r="2.2" fill="'+C.rose+'"/>'+
+  '<g transform="rotate(-16 44 88)"><rect x="30" y="80" width="22" height="17" rx="8.5" fill="'+C.skin+'"/>'+
+  '<rect x="46" y="76" width="6" height="9" rx="3" fill="'+C.skin+'"/><rect x="46" y="83" width="7" height="8" rx="3" fill="'+C.skin+'"/></g>'+
+  '<g class="heart" style="transform-origin:70px 76px;animation:'+(REDUCE?'none':'floatup 2.4s ease-out infinite')+'"><path d="M70 82 C70 78 64 78 64 82 C64 86 70 89 70 92 C70 89 76 86 76 82 C76 78 70 78 70 82 Z" fill="'+C.pink+'"/></g>'+
+  '<g class="heart" style="transform-origin:78px 74px;animation:'+(REDUCE?'none':'floatup 2.4s ease-out .8s infinite')+'"><path d="M78 78 C78 75 74 75 74 78 C74 81 78 83 78 85 C78 83 82 81 82 78 C82 75 78 75 78 78 Z" fill="'+C.rose+'"/></g>'+
+  '</svg>';}
+
+function popup(html,onClose){
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML='<div class="dialog">'+html+'</div>';
+  m.addEventListener('click',e=>{if(e.target===m){m.remove();onClose&&onClose();}});
+  m.querySelector('[data-close]').addEventListener('click',()=>{m.remove();onClose&&onClose();});
+  document.body.appendChild(m);
+}
+function intro(){
+  const spin=REDUCE?'':'spin';
+  popup('<span class="'+spin+'">'+bloom(54)+'</span>'+
+    '<div style="font-family:\'Fraunces\',Georgia,serif;font-weight:500;font-size:30px;margin:14px 0 2px">Doyenne!</div>'+
+    '<div style="color:var(--sub);font-size:16px;margin-bottom:20px">Let\'s go</div>'+
+    '<button class="btn pink" data-close style="padding:10px 26px;border-radius:24px">Let\'s go \u2726</button>',
+    ()=>{
+      popup('<div style="display:flex;align-items:center;gap:6px;justify-content:center">'+kissMan(118)+
+        '<div class="bubble"><span class="tail"></span><span class="tail2"></span>'+
+        '<span style="font-family:\'Fraunces\',Georgia,serif;font-size:17px;line-height:1.3">You are so cool</span></div></div>'+
+        '<button class="btn lav" data-close style="margin-top:18px;padding:10px 26px;border-radius:24px">aw, thanks \u2726</button>');
+    });
+}
+
+function celebrate(){ intro(); }
+
+// ===== password lock (same mechanism + password as the other dashboard) =====
+function initLock(onFresh){
+  var PBKDF2_SALT='57138bcf8e3d516f74082238d59cacf2';
+  var PBKDF2_HASH='3aac9613e719855959e31cdd01d87479f0a3ff67fbcd261f0fe743b5994a3ab2';
+  var PBKDF2_ITERS=310000;
+  var AUTH_KEY='doyenne_auth_v1';
+  var lock=document.getElementById('lock'),input=document.getElementById('lockInput'),
+    btn=document.getElementById('lockBtn'),err=document.getElementById('lockErr'),relock=document.getElementById('relock'),
+    logo=document.getElementById('lockLogo');
+  if(logo){logo.innerHTML=bloom(46); if(REDUCE) logo.classList.remove('spin');}
+  function hex2buf(h){var a=new Uint8Array(h.length/2);
+    for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a;}
+  async function check(v){
+    if(!(window.crypto&&crypto.subtle)) return false;
+    try{
+      var key=await crypto.subtle.importKey('raw',new TextEncoder().encode(v),'PBKDF2',false,['deriveBits']);
+      var bits=await crypto.subtle.deriveBits(
+        {name:'PBKDF2',salt:hex2buf(PBKDF2_SALT),iterations:PBKDF2_ITERS,hash:'SHA-256'},key,256);
+      var hex=Array.from(new Uint8Array(bits)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+      // constant-time-ish compare
+      if(hex.length!==PBKDF2_HASH.length) return false;
+      var diff=0; for(var i=0;i<hex.length;i++) diff|=hex.charCodeAt(i)^PBKDF2_HASH.charCodeAt(i);
+      return diff===0;
+    }catch(e){ return false; }
+  }
+  function reveal(fresh){
+    lock.classList.add('hide'); document.body.classList.remove('locked');
+    setTimeout(function(){lock.style.display='none';},520);
+    relock.style.display='';
+    if(!REDUCE) setTimeout(function(){glitter(84);},60);
+    if(fresh&&onFresh) onFresh();
+  }
+  async function attempt(){
+    var v=input.value; if(!v) return;
+    if(await check(v)){ try{localStorage.setItem(AUTH_KEY,'1');}catch(e){} reveal(true); }
+    else{ lock.classList.add('shake'); err.classList.add('show'); input.value='';
+      setTimeout(function(){lock.classList.remove('shake');err.classList.remove('show');input.focus();},800); }
+  }
+  btn.addEventListener('click',attempt);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter')attempt();});
+  relock.addEventListener('click',function(){try{localStorage.removeItem(AUTH_KEY);}catch(e){}
+    lock.style.display='flex'; lock.classList.remove('hide'); document.body.classList.add('locked');
+    relock.style.display='none'; input.value=''; input.focus();});
+  var authed=false; try{authed=localStorage.getItem(AUTH_KEY)==='1';}catch(e){}
+  if(authed){ reveal(false); } else { setTimeout(function(){input.focus();},100); }
+}
+
+boot();
+bootWater();
+initLock(celebrate);
+window.addEventListener('pageshow',function(e){
+  if(e.persisted && !REDUCE && !document.body.classList.contains('locked')) glitter(84);
+});
+</script>
+</body>
+</html>
